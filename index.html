@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>This Week's Menu</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', 'Helvetica Neue', sans-serif;
+      background: #fafaf8;
+      color: #1a1a18;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Touch drag helper for mobile */
+    .dragging { opacity: 0.5 !important; }
+    .drag-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      padding: 8px 14px;
+      background: #fff;
+      border: 1.5px solid #1a1a18;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      white-space: nowrap;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+
+    const meals = [
+      { id:1, name:"Gnocchi with Italian Sausage", emoji:"🫓", tag:"Italian", time:"25 min",
+        ingredients:["1 lb store-bought gnocchi","1 lb Italian sausage (casings removed)","3 tbsp butter","8–10 fresh sage leaves","½ cup parmesan, grated","Salt & pepper"],
+        steps:["Brown sausage in a skillet, breaking into pieces. Set aside.","Melt butter over medium heat until foamy and golden.","Add sage leaves and fry 30 seconds until crispy.","Add gnocchi and pan-fry 3–4 min until golden.","Toss sausage back in. Top with parmesan."] },
+      { id:2, name:"Hyderabadi Chicken Curry", emoji:"🍛", tag:"Indian", time:"45 min",
+        ingredients:["1.5 lb chicken thighs","1 cup yogurt","2 large onions, thinly sliced","2 tomatoes, chopped","2 green chilies, slit","2 tbsp ginger-garlic paste","1 tsp turmeric","1.5 tsp red chili powder","1 tsp coriander powder","1 tsp cumin powder","1 tsp garam masala","Oil, salt, fresh cilantro","Basmati rice for serving"],
+        steps:["Fry sliced onions in oil until deep golden brown.","Add ginger-garlic paste, green chilies — cook 2 min.","Add tomatoes and all dry spices. Cook until tomatoes break down.","Stir in yogurt, then add chicken. Coat well.","Cover and simmer 25–30 min on low until cooked through.","Finish with garam masala and cilantro. Serve over basmati."] },
+      { id:3, name:"Crunchwrap Supreme", emoji:"🌮", tag:"Tex-Mex", time:"30 min",
+        ingredients:["Large flour tortillas (burrito size)","1 lb ground beef","1 packet taco seasoning","Nacho cheese sauce (or Velveeta)","Tostada shells (crunch layer)","Sour cream","Shredded lettuce & diced tomato","Shredded Mexican cheese blend"],
+        steps:["Brown ground beef, drain, stir in taco seasoning + water.","Warm tortillas so they're pliable.","Layer: beef → nacho cheese → tostada → sour cream → lettuce → tomato → cheese.","Fold tortilla edges up and over, pleating around the circle.","Pan-fry seam-side down until golden, flip. Crispy both sides."] },
+      { id:4, name:"Sheet Pan Chicken & Veggies", emoji:"🍗", tag:"Easy", time:"40 min",
+        ingredients:["4 bone-in chicken thighs","1 lb baby potatoes, halved","2 cups broccoli florets","3 tbsp olive oil","4 garlic cloves, smashed","Salt, pepper, paprika"],
+        steps:["Preheat oven to 425°F.","Toss potatoes and chicken with olive oil, garlic, spices on a sheet pan.","Roast 20 min, add broccoli, roast another 15 min.","Chicken should be 165°F internal. Done."] },
+      { id:5, name:"Beef Stir Fry", emoji:"🥩", tag:"Asian", time:"20 min",
+        ingredients:["1 lb flank steak, sliced thin","3 tbsp soy sauce","1 tbsp sesame oil","3 garlic cloves, minced","1 tbsp fresh ginger, grated","1 bag frozen stir-fry vegetables","Cooked rice"],
+        steps:["Sear steak slices in a hot wok — 2 min. Remove.","Stir-fry garlic and ginger 30 sec.","Add frozen veggies, cook until heated.","Return beef, add soy sauce and sesame oil. Toss.","Serve over rice."] },
+      { id:6, name:"One-Pot Tomato Basil Pasta", emoji:"🍝", tag:"Italian", time:"20 min",
+        ingredients:["12 oz pasta (penne or rigatoni)","1 can (28 oz) crushed tomatoes","4 garlic cloves, sliced","1 small onion, diced","2 tbsp olive oil","Fresh basil","Parmesan","Salt, pepper, red pepper flakes"],
+        steps:["Put everything in one pot with 2.5 cups water.","Bring to a boil, reduce to medium. Stir frequently.","Cook 12–14 min until pasta is done and sauce thickens.","Tear in basil, top with parmesan."] },
+      { id:7, name:"Black Bean Quesadillas", emoji:"🧀", tag:"Tex-Mex", time:"15 min",
+        ingredients:["Flour tortillas","1 can black beans, drained & rinsed","2 cups shredded cheese","Jarred salsa","Sour cream","Optional: leftover chicken, corn, jalapeños"],
+        steps:["Mash black beans slightly with a fork.","Layer beans + cheese on half a tortilla. Add extras.","Fold and cook in a dry skillet, 3 min per side.","Cut into wedges. Serve with salsa and sour cream."] },
+      { id:8, name:"Sausage & Peppers over Rice", emoji:"🌶️", tag:"Cajun", time:"25 min",
+        ingredients:["1 lb smoked sausage / kielbasa, sliced","2 bell peppers, sliced","1 onion, sliced","3 garlic cloves, minced","1 can diced tomatoes","1 tsp Cajun seasoning","Cooked rice"],
+        steps:["Brown sausage slices in a skillet. Set aside.","Sauté peppers and onion until soft. Add garlic.","Add diced tomatoes and Cajun seasoning. Simmer 5 min.","Return sausage. Serve over rice."] },
+      { id:9, name:"Chicken Caesar Wraps", emoji:"🥗", tag:"No-Cook", time:"10 min",
+        ingredients:["1 rotisserie chicken, shredded","Romaine lettuce, chopped","½ cup parmesan, shaved","Caesar dressing","Large flour tortillas"],
+        steps:["Shred rotisserie chicken.","Toss chicken, romaine, parmesan, and dressing.","Wrap in tortillas. Zero cooking."] },
+      { id:10, name:"Egg Fried Rice", emoji:"🍳", tag:"Asian", time:"15 min",
+        ingredients:["3 cups day-old cooked rice","3 eggs, beaten","1 cup frozen peas & carrots","3 tbsp soy sauce","1 tbsp sesame oil","3 green onions, sliced","Oil for cooking"],
+        steps:["Scramble eggs in a hot wok. Break into pieces. Remove.","Add oil, cook frozen peas & carrots.","Add rice, stir-fry on high 3–4 min.","Add soy sauce, sesame oil, eggs back in. Toss.","Top with green onions."] },
+    ];
+
+    const desserts = [
+      { id:101, name:"Mug Brownie", emoji:"🍫", tag:"Dessert", time:"5 min",
+        ingredients:["4 tbsp flour","4 tbsp sugar","2 tbsp cocoa powder","2 tbsp oil","3 tbsp milk","Pinch of salt","Splash of vanilla"],
+        steps:["Mix all dry ingredients in a mug.","Add oil, milk, vanilla. Stir until smooth.","Microwave 60–90 seconds. Let cool 1 min."] },
+      { id:102, name:"Fruit & Whipped Cream", emoji:"🍓", tag:"Dessert", time:"5 min",
+        ingredients:["Mixed berries or sliced fruit","Heavy cream or whipped topping","1 tbsp sugar (optional)","Mint leaves (optional)"],
+        steps:["Wash and slice fruit.","Whip cream with sugar, or use store-bought.","Serve in bowls. Done."] },
+      { id:103, name:"Ice Cream Sundae", emoji:"🍨", tag:"Dessert", time:"5 min",
+        ingredients:["Vanilla ice cream","Chocolate sauce","Whipped cream","Sprinkles or nuts","Maraschino cherry"],
+        steps:["Scoop ice cream into bowls.","Drizzle chocolate sauce.","Top with whipped cream, sprinkles, cherry."] },
+      { id:104, name:"Cinnamon Sugar Toast", emoji:"🍞", tag:"Dessert", time:"5 min",
+        ingredients:["Thick-cut bread or brioche","2 tbsp butter","2 tbsp sugar","1 tsp cinnamon"],
+        steps:["Toast bread, butter generously while hot.","Mix cinnamon and sugar, sprinkle on top.","Cut diagonally. Nostalgic perfection."] },
+    ];
+
+    const allItems = [...meals, ...desserts];
+    const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+    const tagColors = {
+      Italian:{ bg:"#fef3e2", text:"#b45309", border:"#fcd49a" },
+      Indian:{ bg:"#fef1f1", text:"#b91c1c", border:"#f9c4c4" },
+      "Tex-Mex":{ bg:"#fefce8", text:"#a16207", border:"#fde68a" },
+      Easy:{ bg:"#ecfdf5", text:"#047857", border:"#a7f3d0" },
+      Asian:{ bg:"#eff6ff", text:"#1d4ed8", border:"#bfdbfe" },
+      Cajun:{ bg:"#fdf4ff", text:"#9333ea", border:"#e9d5ff" },
+      "No-Cook":{ bg:"#f0fdf4", text:"#15803d", border:"#bbf7d0" },
+      Dessert:{ bg:"#fdf2f8", text:"#be185d", border:"#fbcfe8" },
+    };
+
+    function MealPlanner() {
+      const [selectedMeal, setSelectedMeal] = useState(null);
+      const [assignments, setAssignments] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('mealplan-assignments')) || {}; } catch { return {}; }
+      });
+      const [dragOverSlot, setDragOverSlot] = useState(null);
+
+      // Touch drag state
+      const touchDrag = useRef({ active: false, itemId: null, ghost: null });
+
+      useEffect(() => {
+        try { localStorage.setItem('mealplan-assignments', JSON.stringify(assignments)); } catch {}
+      }, [assignments]);
+
+      // Desktop drag
+      const onDragStart = (e, itemId) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", String(itemId));
+      };
+      const onDragOver = (e, slotKey) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setDragOverSlot(slotKey);
+      };
+      const onDragLeave = (e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setDragOverSlot(null);
+      };
+      const onDrop = (e, slotKey) => {
+        e.preventDefault();
+        setDragOverSlot(null);
+        const itemId = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        if (itemId) setAssignments(prev => ({ ...prev, [slotKey]: itemId }));
+      };
+
+      // Touch drag handlers
+      const onTouchStart = useCallback((e, itemId) => {
+        const touch = e.touches[0];
+        const item = allItems.find(m => m.id === itemId);
+        const ghost = document.createElement('div');
+        ghost.className = 'drag-ghost';
+        ghost.textContent = `${item.emoji} ${item.name}`;
+        ghost.style.left = touch.clientX + 'px';
+        ghost.style.top = touch.clientY + 'px';
+        document.body.appendChild(ghost);
+        touchDrag.current = { active: true, itemId, ghost };
+        e.target.closest('[data-draggable]')?.classList.add('dragging');
+      }, []);
+
+      const onTouchMove = useCallback((e) => {
+        if (!touchDrag.current.active) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchDrag.current.ghost.style.left = touch.clientX + 'px';
+        touchDrag.current.ghost.style.top = touch.clientY + 'px';
+        // Find slot under finger
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const slot = el?.closest('[data-slot]');
+        setDragOverSlot(slot ? slot.dataset.slot : null);
+      }, []);
+
+      const onTouchEnd = useCallback((e) => {
+        if (!touchDrag.current.active) return;
+        const { itemId, ghost } = touchDrag.current;
+        ghost.remove();
+        document.querySelector('.dragging')?.classList.remove('dragging');
+        touchDrag.current = { active: false, itemId: null, ghost: null };
+        // Get slot under last touch point
+        const touch = e.changedTouches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const slot = el?.closest('[data-slot]');
+        if (slot) {
+          setAssignments(prev => ({ ...prev, [slot.dataset.slot]: itemId }));
+        }
+        setDragOverSlot(null);
+      }, []);
+
+      const clearSlot = (slotKey) => {
+        setAssignments(prev => { const n = {...prev}; delete n[slotKey]; return n; });
+      };
+
+      const resetAll = () => {
+        setAssignments({});
+        localStorage.removeItem('mealplan-assignments');
+      };
+
+      const SlotCard = ({ slotKey, label, placeholder }) => {
+        const assignedId = assignments[slotKey];
+        const item = allItems.find(m => m.id === assignedId);
+        const isOver = dragOverSlot === slotKey;
+        return (
+          <div data-slot={slotKey}
+            onDragOver={(e) => onDragOver(e, slotKey)}
+            onDragLeave={onDragLeave}
+            onDrop={(e) => onDrop(e, slotKey)}
+            style={{
+              background: isOver ? "#e8e7e2" : item ? "#fff" : "#f5f5f0",
+              border: isOver ? "2px dashed #1a1a18" : item ? "1.5px solid #e8e6df" : "1.5px dashed #d5d3ca",
+              borderRadius: 10, padding: "7px 8px", minHeight: 50,
+              display: "flex", flexDirection: "column", transition: "all 0.12s ease",
+            }}>
+            <span style={{ fontSize:8, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.7px", color:"#b5b3a8", marginBottom:2 }}>{label}</span>
+            {item ? (
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:2 }}>
+                <span onClick={() => setSelectedMeal(item.id)}
+                  style={{ fontSize:11, fontWeight:600, lineHeight:1.3, color:"#1a1a18", cursor:"pointer", flex:1, wordBreak:"break-word" }}>
+                  {item.emoji} {item.name}
+                </span>
+                <button onClick={() => clearSlot(slotKey)}
+                  style={{ fontSize:14, color:"#c4c2ba", background:"none", border:"none", cursor:"pointer", padding:"0 2px", lineHeight:1, flexShrink:0 }}>×</button>
+              </div>
+            ) : (
+              <span style={{ fontSize:10, color:"#c8c6bc", fontStyle:"italic" }}>{isOver ? "drop here ↓" : placeholder}</span>
+            )}
+          </div>
+        );
+      };
+
+      const MealRow = ({ item }) => {
+        const tc = tagColors[item.tag] || tagColors.Easy;
+        const isSelected = selectedMeal === item.id;
+        return (
+          <div>
+            <div data-draggable draggable
+              onDragStart={(e) => onDragStart(e, item.id)}
+              onTouchStart={(e) => onTouchStart(e, item.id)}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              onClick={() => setSelectedMeal(isSelected ? null : item.id)}
+              style={{
+                display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"10px 12px", background:"#fff",
+                border: isSelected ? "1.5px solid #1a1a18" : "1.5px solid #e8e6df",
+                borderRadius: isSelected ? "12px 12px 0 0" : 12,
+                cursor:"grab", transition:"all 0.15s ease", userSelect:"none",
+                touchAction: "none",
+              }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:13, color:"#d1cfca", letterSpacing:2, lineHeight:1 }}>⠿</span>
+                <span style={{ fontSize:17 }}>{item.emoji}</span>
+                <span style={{ fontSize:14, fontWeight:600 }}>{item.name}</span>
+                <span style={{
+                  fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:20,
+                  background:tc.bg, color:tc.text, border:`1px solid ${tc.border}`,
+                  textTransform:"uppercase", letterSpacing:"0.4px",
+                }}>{item.tag}</span>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                <span style={{ fontSize:11, color:"#9c9a90" }}>{item.time}</span>
+                <span style={{
+                  fontSize:13, color:"#9c9a90", display:"inline-block",
+                  transform: isSelected ? "rotate(180deg)" : "rotate(0deg)",
+                  transition:"transform 0.2s ease",
+                }}>▾</span>
+              </div>
+            </div>
+            {isSelected && (
+              <div style={{
+                background:"#fff", border:"1.5px solid #1a1a18", borderTop:"none",
+                borderRadius:"0 0 12px 12px", padding:"14px 16px 16px",
+              }}>
+                <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
+                  <div style={{ flex:"1 1 180px", minWidth:160 }}>
+                    <h4 style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.8px", color:"#9c9a90", margin:"0 0 8px" }}>Ingredients</h4>
+                    {item.ingredients.map((ing, i) => (
+                      <div key={i} style={{ fontSize:13, lineHeight:1.65, color:"#3a3a36", paddingLeft:10, position:"relative" }}>
+                        <span style={{ position:"absolute", left:0, color:"#d1cfca" }}>·</span>{ing}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ flex:"1.5 1 240px", minWidth:190 }}>
+                    <h4 style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.8px", color:"#9c9a90", margin:"0 0 8px" }}>Steps</h4>
+                    {item.steps.map((step, i) => (
+                      <div key={i} style={{ fontSize:13, lineHeight:1.55, color:"#3a3a36", marginBottom:5, display:"flex", gap:7 }}>
+                        <span style={{ fontWeight:700, color:"#c4c2ba", fontSize:12, minWidth:16, flexShrink:0 }}>{i+1}.</span>
+                        <span>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <div style={{ padding:"24px 16px", maxWidth:960, margin:"0 auto" }}>
+          <div style={{ marginBottom:24, display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12 }}>
+            <div>
+              <h1 style={{ fontFamily:"'Playfair Display', serif", fontSize:28, fontWeight:700, letterSpacing:"-0.5px" }}>This Week's Menu</h1>
+              <p style={{ marginTop:5, fontSize:13, color:"#78776e" }}>Drag meals into any day slot · Tap a name to see the recipe</p>
+            </div>
+            {Object.keys(assignments).length > 0 && (
+              <button onClick={resetAll} style={{
+                fontSize:12, fontWeight:600, padding:"6px 14px", borderRadius:8,
+                border:"1.5px solid #e8e6df", background:"#fff", color:"#78776e",
+                cursor:"pointer", marginTop:4,
+              }}>Reset week</button>
+            )}
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:5, marginBottom:32, overflowX:"auto" }}>
+            {days.map(day => (
+              <div key={day} style={{ display:"flex", flexDirection:"column", gap:4, minWidth:105 }}>
+                <div style={{
+                  fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.7px",
+                  color:"#78776e", textAlign:"center", padding:"4px 0 2px",
+                  borderBottom:"2px solid #e8e6df", marginBottom:2,
+                }}>{day.slice(0,3)}</div>
+                <SlotCard slotKey={`${day}-dinner`} label="Dinner" placeholder="drag dinner" />
+                <SlotCard slotKey={`${day}-dessert`} label="Dessert / Extra" placeholder="drag extra" />
+              </div>
+            ))}
+          </div>
+
+          <h2 style={{ fontFamily:"'Playfair Display', serif", fontSize:19, fontWeight:600, margin:"0 0 10px" }}>Dinners</h2>
+          <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:28 }}>
+            {meals.map(m => <MealRow key={m.id} item={m} />)}
+          </div>
+
+          <h2 style={{ fontFamily:"'Playfair Display', serif", fontSize:19, fontWeight:600, margin:"0 0 10px" }}>Desserts & Extras</h2>
+          <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:24 }}>
+            {desserts.map(d => <MealRow key={d.id} item={d} />)}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<MealPlanner />);
+  </script>
+</body>
+</html>
