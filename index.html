@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>This Week's Menu</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
@@ -42,16 +42,25 @@
     .check-text.checked{text-decoration:line-through;color:#b5b3a8}
     .day-link{font-size:11px;font-weight:600;color:#1d4ed8;cursor:pointer;text-decoration:none;padding:3px 0;display:inline-block}
     .day-link:hover{text-decoration:underline}
-    .shopping-section{background:#fff;border:1.5px solid #e8e6df;border-radius:14px;padding:20px;margin-bottom:20px}
     .shopping-day{background:#fafaf8;border:1.5px solid #e8e6df;border-radius:10px;padding:14px 16px;margin-bottom:8px}
     .progress-bar{height:4px;background:#e8e6df;border-radius:2px;overflow:hidden;margin-top:8px}
     .progress-fill{height:100%;background:#1a1a18;border-radius:2px;transition:width 0.3s ease}
+    .sync-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:16px;font-size:12px;color:#1d4ed8}
+    .sync-bar.error{background:#fef2f2;border-color:#fecaca;color:#dc2626}
+    .sync-bar.ok{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+    .sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    .sync-dot.loading{background:#1d4ed8;animation:pulse 1s infinite}
+    .sync-dot.ok{background:#047857}
+    .sync-dot.error{background:#dc2626}
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
 const{useState,useRef,useEffect,useCallback}=React;
+
+const API_URL="https://script.google.com/macros/s/AKfycbwlX-NyC5Ujam7JlaG-2wdNfq6PhHtbOBM79qqjpTblnoBj2Gnje9G-9riIKj7sN3eVlA/exec";
 
 const defaultBreakfasts=[
   {id:1001,name:"Avocado Toast",emoji:"🥑",tag:"Healthy",time:"10 min",type:"breakfast",
@@ -70,7 +79,6 @@ const defaultBreakfasts=[
     ingredients:["1 cup Greek yogurt","½ cup granola","Fresh fruit (berries, banana)","Drizzle of honey","Optional: nut butter, coconut flakes"],
     steps:["Spoon yogurt into a bowl.","Top with granola, fruit, honey.","That's it. Five minutes, zero cooking."]},
 ];
-
 const defaultLunches=[
   {id:2001,name:"Chicken Salad Sandwich",emoji:"🥪",tag:"American",time:"15 min",type:"lunch",
     ingredients:["2 cups shredded rotisserie chicken","⅓ cup mayo","1 tbsp Dijon mustard","2 stalks celery, diced","Salt, pepper","Bread or croissants","Lettuce, tomato"],
@@ -88,7 +96,6 @@ const defaultLunches=[
     ingredients:["Pita bread or naan","Hummus","Cucumber, sliced","Tomato, diced","Red onion","Feta cheese","Mixed greens"],
     steps:["Warm pita if desired.","Spread hummus generously.","Load with veggies and feta. Fold and eat."]},
 ];
-
 const defaultDinners=[
   {id:1,name:"Gnocchi with Italian Sausage",emoji:"🫓",tag:"Italian",time:"25 min",type:"dinner",
     ingredients:["1 lb store-bought gnocchi","1 lb Italian sausage (casings removed)","3 tbsp butter","8–10 fresh sage leaves","½ cup parmesan, grated","Salt & pepper"],
@@ -133,7 +140,6 @@ const defaultDinners=[
     ingredients:["8 oz rice noodles","½ lb shrimp or chicken","2 eggs","3 tbsp fish sauce","2 tbsp brown sugar","1 tbsp rice vinegar","1 tbsp sriracha","Bean sprouts, crushed peanuts, lime wedges","Green onions, garlic"],
     steps:["Soak rice noodles in hot water 8 min. Drain.","Cook protein in a wok. Scramble eggs. Set aside.","Stir-fry garlic, add noodles.","Add fish sauce, sugar, vinegar, sriracha. Toss.","Return protein and eggs. Top with sprouts, peanuts, lime."]},
 ];
-
 const defaultDesserts=[
   {id:101,name:"Mug Brownie",emoji:"🍫",tag:"Dessert",time:"5 min",type:"dessert",
     ingredients:["4 tbsp flour","4 tbsp sugar","2 tbsp cocoa powder","2 tbsp oil","3 tbsp milk","Pinch of salt","Splash of vanilla"],
@@ -154,7 +160,6 @@ const emojiOptions=["🍝","🍛","🌮","🍗","🥩","🍳","🧀","🌶️","
 const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const slotTypes=[{key:"breakfast",label:"Breakfast"},{key:"lunch",label:"Lunch"},{key:"dinner",label:"Dinner"},{key:"dessert",label:"Dessert"}];
 const mealCategories=[{key:"breakfast",label:"Breakfasts"},{key:"lunch",label:"Lunches"},{key:"dinner",label:"Dinners"},{key:"dessert",label:"Desserts & Extras"}];
-
 const tagColors={
   Italian:{bg:"#fef3e2",text:"#b45309",border:"#fcd49a"},Indian:{bg:"#fef1f1",text:"#b91c1c",border:"#f9c4c4"},
   "Tex-Mex":{bg:"#fefce8",text:"#a16207",border:"#fde68a"},Chinese:{bg:"#eff6ff",text:"#1d4ed8",border:"#bfdbfe"},
@@ -166,103 +171,132 @@ const tagColors={
   Dessert:{bg:"#fdf2f8",text:"#be185d",border:"#fbcfe8"},Other:{bg:"#f5f5f0",text:"#57534e",border:"#d6d3d1"},
 };
 
-const SK={b:'mp-breakfasts',l:'mp-lunches',d:'mp-dinners',ds:'mp-desserts',a:'mp-assignments',n:'mp-nextId',ch:'mp-checked'};
-function ld(k,f){try{const d=localStorage.getItem(k);return d?JSON.parse(d):f}catch{return f}}
-function sv(k,d){try{localStorage.setItem(k,JSON.stringify(d))}catch{}}
+// Sync engine: load from Google Sheet, save back, fallback to localStorage
+const KEYS={b:'breakfasts',l:'lunches',d:'dinners',ds:'desserts',a:'assignments',n:'nextId',ch:'checked'};
+
+async function cloudLoad(){
+  try{
+    const r=await fetch(API_URL+"?action=getAll");
+    const j=await r.json();
+    if(j.success)return j.data;
+  }catch(e){console.warn("Cloud load failed",e)}
+  return null;
+}
+
+async function cloudSave(data){
+  try{
+    await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action:"save",data})});
+  }catch(e){console.warn("Cloud save failed",e)}
+}
+
+function localLoad(k,f){try{const d=localStorage.getItem('mp-'+k);return d?JSON.parse(d):f}catch{return f}}
+function localSave(k,d){try{localStorage.setItem('mp-'+k,JSON.stringify(d))}catch{}}
 
 function MealPlanner(){
-  const[breakfasts,setBreakfasts]=useState(()=>ld(SK.b,defaultBreakfasts));
-  const[lunches,setLunches]=useState(()=>ld(SK.l,defaultLunches));
-  const[dinners,setDinners]=useState(()=>ld(SK.d,defaultDinners));
-  const[dessertList,setDesserts]=useState(()=>ld(SK.ds,defaultDesserts));
-  const[assignments,setAssignments]=useState(()=>ld(SK.a,{}));
-  const[nextId,setNextId]=useState(()=>ld(SK.n,3000));
-  const[checkedItems,setCheckedItems]=useState(()=>ld(SK.ch,{}));
+  const[breakfasts,setBreakfasts]=useState(()=>localLoad(KEYS.b,defaultBreakfasts));
+  const[lunches,setLunches]=useState(()=>localLoad(KEYS.l,defaultLunches));
+  const[dinners,setDinners]=useState(()=>localLoad(KEYS.d,defaultDinners));
+  const[dessertList,setDesserts]=useState(()=>localLoad(KEYS.ds,defaultDesserts));
+  const[assignments,setAssignments]=useState(()=>localLoad(KEYS.a,{}));
+  const[nextId,setNextId]=useState(()=>localLoad(KEYS.n,3000));
+  const[checkedItems,setCheckedItems]=useState(()=>localLoad(KEYS.ch,{}));
   const[selectedMeal,setSelectedMeal]=useState(null);
   const[dragOverSlot,setDragOverSlot]=useState(null);
   const[showAddModal,setShowAddModal]=useState(false);
   const[editItem,setEditItem]=useState(null);
   const[deleteConfirm,setDeleteConfirm]=useState(null);
   const[activeTab,setActiveTab]=useState("dinner");
-  const[showDayList,setShowDayList]=useState(null); // day name or "weekly"
+  const[showDayList,setShowDayList]=useState(null);
+  const[syncStatus,setSyncStatus]=useState("loading"); // loading, ok, error
   const touchDrag=useRef({active:false,itemId:null,ghost:null});
+  const saveTimer=useRef(null);
 
   const listMap={breakfast:breakfasts,lunch:lunches,dinner:dinners,dessert:dessertList};
   const setterMap={breakfast:setBreakfasts,lunch:setLunches,dinner:setDinners,dessert:setDesserts};
   const allItems=[...breakfasts,...lunches,...dinners,...dessertList];
 
-  useEffect(()=>{sv(SK.b,breakfasts)},[breakfasts]);
-  useEffect(()=>{sv(SK.l,lunches)},[lunches]);
-  useEffect(()=>{sv(SK.d,dinners)},[dinners]);
-  useEffect(()=>{sv(SK.ds,dessertList)},[dessertList]);
-  useEffect(()=>{sv(SK.a,assignments)},[assignments]);
-  useEffect(()=>{sv(SK.n,nextId)},[nextId]);
-  useEffect(()=>{sv(SK.ch,checkedItems)},[checkedItems]);
+  // Load from cloud on mount
+  useEffect(()=>{
+    (async()=>{
+      setSyncStatus("loading");
+      const cloud=await cloudLoad();
+      if(cloud&&Object.keys(cloud).length>0){
+        if(cloud[KEYS.b])setBreakfasts(cloud[KEYS.b]);
+        if(cloud[KEYS.l])setLunches(cloud[KEYS.l]);
+        if(cloud[KEYS.d])setDinners(cloud[KEYS.d]);
+        if(cloud[KEYS.ds])setDesserts(cloud[KEYS.ds]);
+        if(cloud[KEYS.a])setAssignments(cloud[KEYS.a]);
+        if(cloud[KEYS.n])setNextId(cloud[KEYS.n]);
+        if(cloud[KEYS.ch])setCheckedItems(cloud[KEYS.ch]);
+        // Also update local
+        if(cloud[KEYS.b])localSave(KEYS.b,cloud[KEYS.b]);
+        if(cloud[KEYS.l])localSave(KEYS.l,cloud[KEYS.l]);
+        if(cloud[KEYS.d])localSave(KEYS.d,cloud[KEYS.d]);
+        if(cloud[KEYS.ds])localSave(KEYS.ds,cloud[KEYS.ds]);
+        if(cloud[KEYS.a])localSave(KEYS.a,cloud[KEYS.a]);
+        if(cloud[KEYS.n])localSave(KEYS.n,cloud[KEYS.n]);
+        if(cloud[KEYS.ch])localSave(KEYS.ch,cloud[KEYS.ch]);
+        setSyncStatus("ok");
+      }else{
+        // No cloud data yet — push local defaults up
+        setSyncStatus("ok");
+        scheduleSync();
+      }
+    })();
+  },[]);
 
-  // Helpers: get ingredients for a day or whole week
-  const getDayMeals=(day)=>{
-    return slotTypes.map(s=>{
-      const id=assignments[`${day}-${s.key}`];
-      return id?allItems.find(m=>m.id===id):null;
-    }).filter(Boolean);
-  };
+  // Debounced sync: save to cloud + local after changes
+  const scheduleSync=useCallback(()=>{
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(()=>{doSync()},1500);
+  },[breakfasts,lunches,dinners,dessertList,assignments,nextId,checkedItems]);
 
-  const getDayIngredients=(day)=>{
-    const meals=getDayMeals(day);
-    const result=[];
-    meals.forEach(m=>{
-      m.ingredients.forEach(ing=>{
-        result.push({text:ing,from:m.name,fromEmoji:m.emoji});
-      });
-    });
-    return result;
-  };
+  const doSync=useCallback(async()=>{
+    const data={
+      [KEYS.b]:breakfasts,[KEYS.l]:lunches,[KEYS.d]:dinners,[KEYS.ds]:dessertList,
+      [KEYS.a]:assignments,[KEYS.n]:nextId,[KEYS.ch]:checkedItems
+    };
+    // Save local immediately
+    Object.entries(data).forEach(([k,v])=>localSave(k,v));
+    // Save cloud
+    setSyncStatus("loading");
+    try{await cloudSave(data);setSyncStatus("ok")}
+    catch{setSyncStatus("error")}
+  },[breakfasts,lunches,dinners,dessertList,assignments,nextId,checkedItems]);
 
-  const getWeekIngredients=()=>{
-    const byDay=[];
-    days.forEach(day=>{
-      const ings=getDayIngredients(day);
-      if(ings.length>0) byDay.push({day,ingredients:ings});
-    });
-    return byDay;
-  };
+  // Trigger sync on any data change (after initial load)
+  const firstLoad=useRef(true);
+  useEffect(()=>{
+    if(firstLoad.current){firstLoad.current=false;return}
+    // Save local immediately
+    localSave(KEYS.b,breakfasts);localSave(KEYS.l,lunches);localSave(KEYS.d,dinners);
+    localSave(KEYS.ds,dessertList);localSave(KEYS.a,assignments);localSave(KEYS.n,nextId);localSave(KEYS.ch,checkedItems);
+    // Debounced cloud save
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(async()=>{
+      setSyncStatus("loading");
+      try{
+        await cloudSave({[KEYS.b]:breakfasts,[KEYS.l]:lunches,[KEYS.d]:dinners,[KEYS.ds]:dessertList,
+          [KEYS.a]:assignments,[KEYS.n]:nextId,[KEYS.ch]:checkedItems});
+        setSyncStatus("ok");
+      }catch{setSyncStatus("error")}
+    },1500);
+  },[breakfasts,lunches,dinners,dessertList,assignments,nextId,checkedItems]);
 
-  const weekHasAnyAssignment=Object.keys(assignments).length>0;
+  const getDayMeals=(day)=>slotTypes.map(s=>{const id=assignments[`${day}-${s.key}`];return id?allItems.find(m=>m.id===id):null}).filter(Boolean);
+  const getDayIngredients=(day)=>{const meals=getDayMeals(day);const r=[];meals.forEach(m=>{m.ingredients.forEach(ing=>{r.push({text:ing,from:m.name,fromEmoji:m.emoji})})});return r};
+  const getWeekIngredients=()=>{const b=[];days.forEach(day=>{const i=getDayIngredients(day);if(i.length>0)b.push({day,ingredients:i})});return b};
+  const weekHasAny=Object.keys(assignments).length>0;
+  const toggleCheck=(key)=>setCheckedItems(p=>({...p,[key]:!p[key]}));
 
-  const toggleCheck=(key)=>{
-    setCheckedItems(p=>({...p,[key]:!p[key]}));
-  };
-
-  const clearAllChecks=()=>setCheckedItems({});
-
-  // Drag handlers
   const onDragStart=(e,id)=>{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",String(id))};
   const onDragOver=(e,sk)=>{e.preventDefault();e.dataTransfer.dropEffect="move";setDragOverSlot(sk)};
   const onDragLeave=(e)=>{if(!e.currentTarget.contains(e.relatedTarget))setDragOverSlot(null)};
   const onDrop=(e,sk)=>{e.preventDefault();setDragOverSlot(null);const id=parseInt(e.dataTransfer.getData("text/plain"),10);if(id)setAssignments(p=>({...p,[sk]:id}))};
-
-  const onTouchStart=useCallback((e,itemId)=>{
-    const t=e.touches[0];const item=allItems.find(m=>m.id===itemId);
-    const g=document.createElement('div');g.className='drag-ghost';
-    g.textContent=`${item.emoji} ${item.name}`;g.style.left=t.clientX+'px';g.style.top=t.clientY+'px';
-    document.body.appendChild(g);touchDrag.current={active:true,itemId,ghost:g};
-    e.target.closest('[data-draggable]')?.classList.add('dragging');
-  },[allItems]);
-  const onTouchMove=useCallback((e)=>{
-    if(!touchDrag.current.active)return;e.preventDefault();
-    const t=e.touches[0];touchDrag.current.ghost.style.left=t.clientX+'px';touchDrag.current.ghost.style.top=t.clientY+'px';
-    const el=document.elementFromPoint(t.clientX,t.clientY);const s=el?.closest('[data-slot]');
-    setDragOverSlot(s?s.dataset.slot:null);
-  },[]);
-  const onTouchEnd=useCallback((e)=>{
-    if(!touchDrag.current.active)return;
-    const{itemId,ghost}=touchDrag.current;ghost.remove();
-    document.querySelector('.dragging')?.classList.remove('dragging');
-    touchDrag.current={active:false,itemId:null,ghost:null};
-    const t=e.changedTouches[0];const el=document.elementFromPoint(t.clientX,t.clientY);const s=el?.closest('[data-slot]');
-    if(s)setAssignments(p=>({...p,[s.dataset.slot]:itemId}));
-    setDragOverSlot(null);
-  },[]);
+  const onTouchStart=useCallback((e,itemId)=>{const t=e.touches[0];const item=allItems.find(m=>m.id===itemId);const g=document.createElement('div');g.className='drag-ghost';g.textContent=`${item.emoji} ${item.name}`;g.style.left=t.clientX+'px';g.style.top=t.clientY+'px';document.body.appendChild(g);touchDrag.current={active:true,itemId,ghost:g};e.target.closest('[data-draggable]')?.classList.add('dragging')},[allItems]);
+  const onTouchMove=useCallback((e)=>{if(!touchDrag.current.active)return;e.preventDefault();const t=e.touches[0];touchDrag.current.ghost.style.left=t.clientX+'px';touchDrag.current.ghost.style.top=t.clientY+'px';const el=document.elementFromPoint(t.clientX,t.clientY);const s=el?.closest('[data-slot]');setDragOverSlot(s?s.dataset.slot:null)},[]);
+  const onTouchEnd=useCallback((e)=>{if(!touchDrag.current.active)return;const{itemId,ghost}=touchDrag.current;ghost.remove();document.querySelector('.dragging')?.classList.remove('dragging');touchDrag.current={active:false,itemId:null,ghost:null};const t=e.changedTouches[0];const el=document.elementFromPoint(t.clientX,t.clientY);const s=el?.closest('[data-slot]');if(s)setAssignments(p=>({...p,[s.dataset.slot]:itemId}));setDragOverSlot(null)},[]);
 
   const clearSlot=(k)=>setAssignments(p=>{const n={...p};delete n[k];return n});
   const resetWeek=()=>{setAssignments({});setCheckedItems({})};
@@ -271,214 +305,99 @@ function MealPlanner(){
     const isEdit=editItem&&!editItem._new;const id=isEdit?editItem.id:nextId;
     const item={...recipe,id};if(!isEdit)setNextId(p=>p+1);
     const setter=setterMap[item.type];
-    if(setter){
-      if(isEdit){Object.values(setterMap).forEach(s=>s(p=>p.filter(x=>x.id!==id)));setter(p=>[...p,item])}
-      else{setter(p=>[...p,item])}
-    }
+    if(setter){if(isEdit){Object.values(setterMap).forEach(s=>s(p=>p.filter(x=>x.id!==id)));setter(p=>[...p,item])}else{setter(p=>[...p,item])}}
     setShowAddModal(false);setEditItem(null);
   };
-
   const deleteRecipe=(item)=>{
     const setter=setterMap[item.type];if(setter)setter(p=>p.filter(x=>x.id!==item.id));
     setAssignments(p=>{const n={...p};Object.keys(n).forEach(k=>{if(n[k]===item.id)delete n[k]});return n});
     if(selectedMeal===item.id)setSelectedMeal(null);setDeleteConfirm(null);
   };
-
   const openEdit=(item)=>{setEditItem(item);setShowAddModal(true)};
   const openAdd=(type)=>{setEditItem({_new:true,type});setShowAddModal(true)};
 
-  // Checkmark SVG
   const CheckSvg=()=>(<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>);
+  const IngredientCheck=({text,checkKey,sub})=>{const checked=!!checkedItems[checkKey];return(
+    <div className="check-item" onClick={()=>toggleCheck(checkKey)}>
+      <div className={`check-box ${checked?'checked':''}`}><CheckSvg/></div>
+      <div><span className={`check-text ${checked?'checked':''}`}>{text}</span>{sub&&<div style={{fontSize:11,color:"#b5b3a8",marginTop:1}}>{sub}</div>}</div>
+    </div>)};
 
-  // Ingredient list item with checkbox
-  const IngredientCheck=({text,checkKey,sub})=>{
-    const checked=!!checkedItems[checkKey];
-    return(
-      <div className="check-item" onClick={()=>toggleCheck(checkKey)}>
-        <div className={`check-box ${checked?'checked':''}`}><CheckSvg/></div>
-        <div>
-          <span className={`check-text ${checked?'checked':''}`}>{text}</span>
-          {sub&&<div style={{fontSize:11,color:"#b5b3a8",marginTop:1}}>{sub}</div>}
-        </div>
-      </div>
-    );
-  };
-
-  // Shopping List Modal
   const ShoppingModal=()=>{
-    const isWeekly=showDayList==='weekly';
-    const title=isWeekly?'Weekly Shopping List':`${showDayList}'s Ingredients`;
-
-    let sections=[];
-    if(isWeekly){
-      sections=getWeekIngredients();
-    }else{
-      const ings=getDayIngredients(showDayList);
-      if(ings.length>0)sections=[{day:showDayList,ingredients:ings}];
-    }
-
-    // For weekly: flatten and dedupe-ish for a master list
-    const allIngs=sections.flatMap(s=>s.ingredients);
-    const totalCount=allIngs.length;
-    const checkedCount=allIngs.filter((_,i)=>{
-      const key=isWeekly?`week-${i}`:`day-${showDayList}-${i}`;
-      return checkedItems[key];
-    }).length;
-
+    const isWeekly=showDayList==='weekly';const title=isWeekly?'Weekly Shopping List':`${showDayList}'s Ingredients`;
+    let sections=[];if(isWeekly){sections=getWeekIngredients()}else{const i=getDayIngredients(showDayList);if(i.length>0)sections=[{day:showDayList,ingredients:i}]}
+    const allIngs=sections.flatMap(s=>s.ingredients);const total=allIngs.length;
+    const checked=allIngs.filter((_,i)=>{const k=isWeekly?`week-${i}`:`day-${showDayList}-${i}`;return checkedItems[k]}).length;
     return(
       <div className="modal-overlay" onClick={()=>setShowDayList(null)}>
         <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:540}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
-            <div>
-              <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700}}>{isWeekly?'🛒':''} {title}</h2>
-              {totalCount>0&&<p style={{fontSize:12,color:"#9c9a90",marginTop:4}}>{checkedCount} of {totalCount} items checked</p>}
-            </div>
-            {totalCount>0&&checkedCount>0&&(
-              <button className="btn btn-secondary" style={{fontSize:11,padding:"5px 12px"}}
-                onClick={()=>{
-                  // Clear only relevant checks
-                  const keysToRemove=allIngs.map((_,i)=>isWeekly?`week-${i}`:`day-${showDayList}-${i}`);
-                  setCheckedItems(p=>{const n={...p};keysToRemove.forEach(k=>delete n[k]);return n});
-                }}>Uncheck all</button>
-            )}
+            <div><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700}}>{isWeekly?'🛒':''} {title}</h2>
+              {total>0&&<p style={{fontSize:12,color:"#9c9a90",marginTop:4}}>{checked} of {total} items checked</p>}</div>
+            {total>0&&checked>0&&(<button className="btn btn-secondary" style={{fontSize:11,padding:"5px 12px"}}
+              onClick={()=>{const keys=allIngs.map((_,i)=>isWeekly?`week-${i}`:`day-${showDayList}-${i}`);setCheckedItems(p=>{const n={...p};keys.forEach(k=>delete n[k]);return n})}}>Uncheck all</button>)}
           </div>
-
-          {totalCount>0&&(
-            <div className="progress-bar" style={{marginBottom:16}}>
-              <div className="progress-fill" style={{width:`${totalCount?((checkedCount/totalCount)*100):0}%`}}/>
-            </div>
-          )}
-
-          {sections.length===0&&(
-            <p style={{fontSize:13,color:"#b5b3a8",fontStyle:"italic",padding:"20px 0",textAlign:"center"}}>
-              {isWeekly?'No meals assigned yet. Drag some meals into the weekly grid first.':'No meals assigned for this day.'}
-            </p>
-          )}
-
+          {total>0&&(<div className="progress-bar" style={{marginBottom:16}}><div className="progress-fill" style={{width:`${total?((checked/total)*100):0}%`}}/></div>)}
+          {sections.length===0&&(<p style={{fontSize:13,color:"#b5b3a8",fontStyle:"italic",padding:"20px 0",textAlign:"center"}}>{isWeekly?'No meals assigned yet.':'No meals for this day.'}</p>)}
           {isWeekly?(
-            // Weekly view: grouped by day
-            <div>
-              {sections.map((sec,si)=>{
-                const startIdx=sections.slice(0,si).reduce((sum,s)=>sum+s.ingredients.length,0);
-                return(
-                  <div key={sec.day} className="shopping-day">
-                    <div style={{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.6px",color:"#78776e",marginBottom:8}}>{sec.day}</div>
-                    {sec.ingredients.map((ing,i)=>(
-                      <IngredientCheck key={i} text={ing.text} checkKey={`week-${startIdx+i}`} sub={`${ing.fromEmoji} ${ing.from}`}/>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          ):(
-            // Single day view
-            <div>
-              {sections.map(sec=>
-                sec.ingredients.map((ing,i)=>(
-                  <IngredientCheck key={i} text={ing.text} checkKey={`day-${showDayList}-${i}`} sub={`${ing.fromEmoji} ${ing.from}`}/>
-                ))
-              )}
-            </div>
-          )}
+            <div>{sections.map((sec,si)=>{const start=sections.slice(0,si).reduce((s,x)=>s+x.ingredients.length,0);return(
+              <div key={sec.day} className="shopping-day"><div style={{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.6px",color:"#78776e",marginBottom:8}}>{sec.day}</div>
+                {sec.ingredients.map((ing,i)=>(<IngredientCheck key={i} text={ing.text} checkKey={`week-${start+i}`} sub={`${ing.fromEmoji} ${ing.from}`}/>))}</div>)})}</div>
+          ):(<div>{sections.map(sec=>sec.ingredients.map((ing,i)=>(<IngredientCheck key={i} text={ing.text} checkKey={`day-${showDayList}-${i}`} sub={`${ing.fromEmoji} ${ing.from}`}/>)))}</div>)}
+          <div style={{marginTop:20,display:"flex",justifyContent:"flex-end"}}><button className="btn btn-secondary" onClick={()=>setShowDayList(null)}>Close</button></div>
+        </div>
+      </div>);
+  };
 
-          <div style={{marginTop:20,display:"flex",justifyContent:"flex-end"}}>
-            <button className="btn btn-secondary" onClick={()=>setShowDayList(null)}>Close</button>
-          </div>
+  const SlotCard=({slotKey,label,placeholder})=>{const aid=assignments[slotKey];const item=allItems.find(m=>m.id===aid);const isOver=dragOverSlot===slotKey;
+    return(<div data-slot={slotKey} onDragOver={e=>onDragOver(e,slotKey)} onDragLeave={onDragLeave} onDrop={e=>onDrop(e,slotKey)}
+      style={{background:isOver?"#e8e7e2":item?"#fff":"#f5f5f0",border:isOver?"2px dashed #1a1a18":item?"1.5px solid #e8e6df":"1.5px dashed #d5d3ca",borderRadius:8,padding:"5px 7px",minHeight:42,display:"flex",flexDirection:"column",transition:"all 0.12s ease"}}>
+      <span style={{fontSize:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.7px",color:"#b5b3a8",marginBottom:1}}>{label}</span>
+      {item?(<div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:2}}>
+        <span onClick={()=>{setSelectedMeal(item.id);setActiveTab(item.type)}} style={{fontSize:10,fontWeight:600,lineHeight:1.25,color:"#1a1a18",cursor:"pointer",flex:1,wordBreak:"break-word"}}>{item.emoji} {item.name}</span>
+        <button onClick={()=>clearSlot(slotKey)} style={{fontSize:13,color:"#c4c2ba",background:"none",border:"none",cursor:"pointer",padding:"0 1px",lineHeight:1,flexShrink:0}}>×</button>
+      </div>):(<span style={{fontSize:9,color:"#c8c6bc",fontStyle:"italic"}}>{isOver?"drop ↓":placeholder}</span>)}
+    </div>)};
+
+  const MealRow=({item})=>{const tc=tagColors[item.tag]||tagColors.Other;const isSelected=selectedMeal===item.id;
+    return(<div>
+      <div data-draggable draggable onDragStart={e=>onDragStart(e,item.id)} onTouchStart={e=>onTouchStart(e,item.id)} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onClick={()=>setSelectedMeal(isSelected?null:item.id)}
+        style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:"#fff",border:isSelected?"1.5px solid #1a1a18":"1.5px solid #e8e6df",borderRadius:isSelected?"12px 12px 0 0":12,cursor:"grab",transition:"all 0.15s ease",userSelect:"none",touchAction:"none"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+          <span style={{fontSize:13,color:"#d1cfca",letterSpacing:2,lineHeight:1,flexShrink:0}}>⠿</span>
+          <span style={{fontSize:17,flexShrink:0}}>{item.emoji}</span>
+          <span style={{fontSize:14,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</span>
+          <span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:tc.bg,color:tc.text,border:`1px solid ${tc.border}`,textTransform:"uppercase",letterSpacing:"0.4px",flexShrink:0,whiteSpace:"nowrap"}}>{item.tag}</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+          <span style={{fontSize:11,color:"#9c9a90"}}>{item.time}</span>
+          <span style={{fontSize:13,color:"#9c9a90",display:"inline-block",transform:isSelected?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s ease"}}>▾</span>
         </div>
       </div>
-    );
-  };
-
-  const SlotCard=({slotKey,label,placeholder})=>{
-    const aid=assignments[slotKey];const item=allItems.find(m=>m.id===aid);
-    const isOver=dragOverSlot===slotKey;
-    return(
-      <div data-slot={slotKey} onDragOver={e=>onDragOver(e,slotKey)} onDragLeave={onDragLeave} onDrop={e=>onDrop(e,slotKey)}
-        style={{background:isOver?"#e8e7e2":item?"#fff":"#f5f5f0",border:isOver?"2px dashed #1a1a18":item?"1.5px solid #e8e6df":"1.5px dashed #d5d3ca",
-          borderRadius:8,padding:"5px 7px",minHeight:42,display:"flex",flexDirection:"column",transition:"all 0.12s ease"}}>
-        <span style={{fontSize:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.7px",color:"#b5b3a8",marginBottom:1}}>{label}</span>
-        {item?(
-          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:2}}>
-            <span onClick={()=>{setSelectedMeal(item.id);setActiveTab(item.type)}}
-              style={{fontSize:10,fontWeight:600,lineHeight:1.25,color:"#1a1a18",cursor:"pointer",flex:1,wordBreak:"break-word"}}>
-              {item.emoji} {item.name}</span>
-            <button onClick={()=>clearSlot(slotKey)}
-              style={{fontSize:13,color:"#c4c2ba",background:"none",border:"none",cursor:"pointer",padding:"0 1px",lineHeight:1,flexShrink:0}}>×</button>
-          </div>
-        ):(
-          <span style={{fontSize:9,color:"#c8c6bc",fontStyle:"italic"}}>{isOver?"drop ↓":placeholder}</span>
-        )}
-      </div>
-    );
-  };
-
-  const MealRow=({item})=>{
-    const tc=tagColors[item.tag]||tagColors.Other;const isSelected=selectedMeal===item.id;
-    return(
-      <div>
-        <div data-draggable draggable onDragStart={e=>onDragStart(e,item.id)}
-          onTouchStart={e=>onTouchStart(e,item.id)} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-          onClick={()=>setSelectedMeal(isSelected?null:item.id)}
-          style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:"#fff",
-            border:isSelected?"1.5px solid #1a1a18":"1.5px solid #e8e6df",borderRadius:isSelected?"12px 12px 0 0":12,
-            cursor:"grab",transition:"all 0.15s ease",userSelect:"none",touchAction:"none"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-            <span style={{fontSize:13,color:"#d1cfca",letterSpacing:2,lineHeight:1,flexShrink:0}}>⠿</span>
-            <span style={{fontSize:17,flexShrink:0}}>{item.emoji}</span>
-            <span style={{fontSize:14,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</span>
-            <span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:tc.bg,color:tc.text,
-              border:`1px solid ${tc.border}`,textTransform:"uppercase",letterSpacing:"0.4px",flexShrink:0,whiteSpace:"nowrap"}}>{item.tag}</span>
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-            <span style={{fontSize:11,color:"#9c9a90"}}>{item.time}</span>
-            <span style={{fontSize:13,color:"#9c9a90",display:"inline-block",transform:isSelected?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s ease"}}>▾</span>
-          </div>
+      {isSelected&&(<div style={{background:"#fff",border:"1.5px solid #1a1a18",borderTop:"none",borderRadius:"0 0 12px 12px",padding:"14px 16px 16px"}}>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+          <div style={{flex:"1 1 180px",minWidth:160}}><h4 style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.8px",color:"#9c9a90",margin:"0 0 8px"}}>Ingredients</h4>
+            {item.ingredients.map((ing,i)=>(<div key={i} style={{fontSize:13,lineHeight:1.65,color:"#3a3a36",paddingLeft:10,position:"relative"}}><span style={{position:"absolute",left:0,color:"#d1cfca"}}>·</span>{ing}</div>))}</div>
+          <div style={{flex:"1.5 1 240px",minWidth:190}}><h4 style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.8px",color:"#9c9a90",margin:"0 0 8px"}}>Steps</h4>
+            {item.steps.map((step,i)=>(<div key={i} style={{fontSize:13,lineHeight:1.55,color:"#3a3a36",marginBottom:5,display:"flex",gap:7}}><span style={{fontWeight:700,color:"#c4c2ba",fontSize:12,minWidth:16,flexShrink:0}}>{i+1}.</span><span>{step}</span></div>))}</div>
         </div>
-        {isSelected&&(
-          <div style={{background:"#fff",border:"1.5px solid #1a1a18",borderTop:"none",borderRadius:"0 0 12px 12px",padding:"14px 16px 16px"}}>
-            <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
-              <div style={{flex:"1 1 180px",minWidth:160}}>
-                <h4 style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.8px",color:"#9c9a90",margin:"0 0 8px"}}>Ingredients</h4>
-                {item.ingredients.map((ing,i)=>(
-                  <div key={i} style={{fontSize:13,lineHeight:1.65,color:"#3a3a36",paddingLeft:10,position:"relative"}}>
-                    <span style={{position:"absolute",left:0,color:"#d1cfca"}}>·</span>{ing}</div>
-                ))}
-              </div>
-              <div style={{flex:"1.5 1 240px",minWidth:190}}>
-                <h4 style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.8px",color:"#9c9a90",margin:"0 0 8px"}}>Steps</h4>
-                {item.steps.map((step,i)=>(
-                  <div key={i} style={{fontSize:13,lineHeight:1.55,color:"#3a3a36",marginBottom:5,display:"flex",gap:7}}>
-                    <span style={{fontWeight:700,color:"#c4c2ba",fontSize:12,minWidth:16,flexShrink:0}}>{i+1}.</span>
-                    <span>{step}</span></div>
-                ))}
-              </div>
-            </div>
-            <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #eceae3",display:"flex",gap:8}}>
-              <button className="btn btn-secondary" onClick={e=>{e.stopPropagation();openEdit(item)}}>Edit</button>
-              <button className="btn btn-danger" onClick={e=>{e.stopPropagation();setDeleteConfirm(item)}}>Delete</button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+        <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #eceae3",display:"flex",gap:8}}>
+          <button className="btn btn-secondary" onClick={e=>{e.stopPropagation();openEdit(item)}}>Edit</button>
+          <button className="btn btn-danger" onClick={e=>{e.stopPropagation();setDeleteConfirm(item)}}>Delete</button>
+        </div>
+      </div>)}
+    </div>)};
 
   const RecipeModal=()=>{
     const isNew=editItem?._new;
-    const[name,setName]=useState(isNew?'':editItem.name);
-    const[emoji,setEmoji]=useState(isNew?'🍝':editItem.emoji);
+    const[name,setName]=useState(isNew?'':editItem.name);const[emoji,setEmoji]=useState(isNew?'🍝':editItem.emoji);
     const[tag,setTag]=useState(isNew?(editItem.type==='dessert'?'Dessert':editItem.type==='breakfast'?'Healthy':'Italian'):editItem.tag);
-    const[time,setTime]=useState(isNew?'':editItem.time);
-    const[type,setType]=useState(editItem.type||'dinner');
+    const[time,setTime]=useState(isNew?'':editItem.time);const[type,setType]=useState(editItem.type||'dinner');
     const[ingredientsText,setIngredientsText]=useState(isNew?'':editItem.ingredients.join('\n'));
-    const[stepsText,setStepsText]=useState(isNew?'':editItem.steps.join('\n'));
-    const[showEmojis,setShowEmojis]=useState(false);
-    const handleSave=()=>{
-      if(!name.trim())return;
-      saveRecipe({name:name.trim(),emoji,tag,time:time.trim()||'? min',type,
-        ingredients:ingredientsText.split('\n').map(s=>s.trim()).filter(Boolean),
-        steps:stepsText.split('\n').map(s=>s.trim()).filter(Boolean)});
-    };
+    const[stepsText,setStepsText]=useState(isNew?'':editItem.steps.join('\n'));const[showEmojis,setShowEmojis]=useState(false);
+    const handleSave=()=>{if(!name.trim())return;saveRecipe({name:name.trim(),emoji,tag,time:time.trim()||'? min',type,
+      ingredients:ingredientsText.split('\n').map(s=>s.trim()).filter(Boolean),steps:stepsText.split('\n').map(s=>s.trim()).filter(Boolean)})};
     return(
       <div className="modal-overlay" onClick={()=>{setShowAddModal(false);setEditItem(null)}}>
         <div className="modal" onClick={e=>e.stopPropagation()}>
@@ -490,24 +409,15 @@ function MealPlanner(){
           <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
             <div style={{position:"relative"}}>
               <button onClick={()=>setShowEmojis(!showEmojis)} style={{width:46,height:42,fontSize:22,background:"#fafaf8",border:"1.5px solid #e8e6df",borderRadius:8,cursor:"pointer"}}>{emoji}</button>
-              {showEmojis&&(
-                <div style={{position:"absolute",top:46,left:0,background:"#fff",border:"1.5px solid #e8e6df",borderRadius:10,padding:8,display:"flex",flexWrap:"wrap",gap:4,width:220,zIndex:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}}>
-                  {emojiOptions.map(em=>(
-                    <button key={em} onClick={()=>{setEmoji(em);setShowEmojis(false)}} style={{width:32,height:32,fontSize:18,background:emoji===em?"#f0f0ea":"transparent",border:"none",borderRadius:6,cursor:"pointer"}}>{em}</button>
-                  ))}
-                </div>
-              )}
+              {showEmojis&&(<div style={{position:"absolute",top:46,left:0,background:"#fff",border:"1.5px solid #e8e6df",borderRadius:10,padding:8,display:"flex",flexWrap:"wrap",gap:4,width:220,zIndex:10,boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}}>
+                {emojiOptions.map(em=>(<button key={em} onClick={()=>{setEmoji(em);setShowEmojis(false)}} style={{width:32,height:32,fontSize:18,background:emoji===em?"#f0f0ea":"transparent",border:"none",borderRadius:6,cursor:"pointer"}}>{em}</button>))}</div>)}
             </div>
             <input className="form-input" value={time} onChange={e=>setTime(e.target.value)} placeholder="e.g. 30 min" style={{flex:1}}/>
           </div>
           <label className="form-label">Meal Type</label>
-          <div style={{display:"flex",flexWrap:"wrap",gap:0}}>
-            {mealCategories.map(c=>(<span key={c.key} className={`tag-option ${type===c.key?'active':''}`} onClick={()=>setType(c.key)}>{c.label.replace(/s$/,'')}</span>))}
-          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:0}}>{mealCategories.map(c=>(<span key={c.key} className={`tag-option ${type===c.key?'active':''}`} onClick={()=>setType(c.key)}>{c.label.replace(/s$/,'')}</span>))}</div>
           <label className="form-label">Cuisine / Category</label>
-          <div style={{display:"flex",flexWrap:"wrap",gap:0}}>
-            {tags.map(t=>(<span key={t} className={`tag-option ${tag===t?'active':''}`} onClick={()=>setTag(t)}>{t}</span>))}
-          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:0}}>{tags.map(t=>(<span key={t} className={`tag-option ${tag===t?'active':''}`} onClick={()=>setTag(t)}>{t}</span>))}</div>
           <label className="form-label">Ingredients <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,color:"#b5b3a8"}}>(one per line)</span></label>
           <textarea className="form-input form-textarea" value={ingredientsText} onChange={e=>setIngredientsText(e.target.value)} placeholder={"1 lb chicken thighs\n1 cup yogurt\n2 onions, sliced"}/>
           <label className="form-label">Steps <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,color:"#b5b3a8"}}>(one per line)</span></label>
@@ -517,80 +427,55 @@ function MealPlanner(){
             <button className="btn btn-primary" onClick={handleSave}>{isNew?'Add Recipe':'Save Changes'}</button>
           </div>
         </div>
-      </div>
-    );
-  };
+      </div>)};
 
-  const DeleteModal=()=>(
-    <div className="modal-overlay" onClick={()=>setDeleteConfirm(null)}>
-      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:380,textAlign:"center",padding:"32px 28px"}}>
-        <div style={{fontSize:36,marginBottom:12}}>{deleteConfirm.emoji}</div>
-        <h3 style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,marginBottom:8}}>Delete {deleteConfirm.name}?</h3>
-        <p style={{fontSize:13,color:"#78776e",marginBottom:20}}>This can't be undone.</p>
-        <div style={{display:"flex",gap:10,justifyContent:"center"}}>
-          <button className="btn btn-secondary" onClick={()=>setDeleteConfirm(null)}>Keep it</button>
-          <button className="btn btn-danger" onClick={()=>deleteRecipe(deleteConfirm)}>Delete</button>
-        </div>
+  const DeleteModal=()=>(<div className="modal-overlay" onClick={()=>setDeleteConfirm(null)}>
+    <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:380,textAlign:"center",padding:"32px 28px"}}>
+      <div style={{fontSize:36,marginBottom:12}}>{deleteConfirm.emoji}</div>
+      <h3 style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,marginBottom:8}}>Delete {deleteConfirm.name}?</h3>
+      <p style={{fontSize:13,color:"#78776e",marginBottom:20}}>This can't be undone.</p>
+      <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+        <button className="btn btn-secondary" onClick={()=>setDeleteConfirm(null)}>Keep it</button>
+        <button className="btn btn-danger" onClick={()=>deleteRecipe(deleteConfirm)}>Delete</button>
       </div>
-    </div>
-  );
+    </div></div>);
 
-  const currentList=listMap[activeTab]||[];
-  const currentCategory=mealCategories.find(c=>c.key===activeTab);
+  const currentList=listMap[activeTab]||[];const currentCategory=mealCategories.find(c=>c.key===activeTab);
 
   return(
     <div style={{padding:"24px 16px",maxWidth:980,margin:"0 auto"}}>
+      {/* Sync indicator */}
+      <div className={`sync-bar ${syncStatus}`} style={{fontSize:11}}>
+        <div className={`sync-dot ${syncStatus}`}/>
+        {syncStatus==='loading'&&'Syncing with Google Sheets...'}
+        {syncStatus==='ok'&&'Synced — changes save to all your devices'}
+        {syncStatus==='error'&&'Sync failed — changes saved locally, will retry'}
+      </div>
+
       <div style={{marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
         <div>
           <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:700,letterSpacing:"-0.5px"}}>This Week's Menu</h1>
           <p style={{marginTop:5,fontSize:13,color:"#78776e"}}>Drag meals into any day · Tap to see recipe · Add your own</p>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {weekHasAnyAssignment&&(
-            <button className="btn btn-primary" onClick={()=>setShowDayList('weekly')} style={{fontSize:12,padding:"6px 14px"}}>
-              🛒 Weekly shopping list</button>
-          )}
-          {weekHasAnyAssignment&&(
-            <button className="btn btn-secondary" onClick={resetWeek} style={{fontSize:12}}>Reset week</button>
-          )}
+          {weekHasAny&&(<button className="btn btn-primary" onClick={()=>setShowDayList('weekly')} style={{fontSize:12,padding:"6px 14px"}}>🛒 Weekly shopping list</button>)}
+          {weekHasAny&&(<button className="btn btn-secondary" onClick={resetWeek} style={{fontSize:12}}>Reset week</button>)}
         </div>
       </div>
 
-      {/* Weekly grid */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(7, 1fr)",gap:4,marginBottom:6,overflowX:"auto"}}>
-        {days.map(day=>(
-          <div key={day} style={{display:"flex",flexDirection:"column",gap:3,minWidth:100}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.7px",color:"#78776e",textAlign:"center",padding:"4px 0 2px",borderBottom:"2px solid #e8e6df",marginBottom:2}}>{day.slice(0,3)}</div>
-            {slotTypes.map(s=>(
-              <SlotCard key={s.key} slotKey={`${day}-${s.key}`} label={s.label} placeholder={`+ ${s.label.toLowerCase()}`}/>
-            ))}
-          </div>
-        ))}
+        {days.map(day=>(<div key={day} style={{display:"flex",flexDirection:"column",gap:3,minWidth:100}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.7px",color:"#78776e",textAlign:"center",padding:"4px 0 2px",borderBottom:"2px solid #e8e6df",marginBottom:2}}>{day.slice(0,3)}</div>
+          {slotTypes.map(s=>(<SlotCard key={s.key} slotKey={`${day}-${s.key}`} label={s.label} placeholder={`+ ${s.label.toLowerCase()}`}/>))}
+        </div>))}
       </div>
-
-      {/* Per-day ingredient links */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(7, 1fr)",gap:4,marginBottom:28}}>
-        {days.map(day=>{
-          const count=getDayMeals(day).length;
-          return(
-            <div key={day} style={{textAlign:"center",minWidth:100}}>
-              {count>0?(
-                <span className="day-link" onClick={()=>setShowDayList(day)}>📋 ingredients</span>
-              ):(
-                <span style={{fontSize:11,color:"#d5d3ca"}}>—</span>
-              )}
-            </div>
-          );
-        })}
+        {days.map(day=>{const c=getDayMeals(day).length;return(<div key={day} style={{textAlign:"center",minWidth:100}}>
+          {c>0?(<span className="day-link" onClick={()=>setShowDayList(day)}>📋 ingredients</span>):(<span style={{fontSize:11,color:"#d5d3ca"}}>—</span>)}
+        </div>)})}
       </div>
 
-      {/* Meal Pool with tabs */}
-      <div className="section-tabs">
-        {mealCategories.map(c=>(
-          <button key={c.key} className={`section-tab ${activeTab===c.key?'active':''}`} onClick={()=>setActiveTab(c.key)}>{c.label}</button>
-        ))}
-      </div>
-
+      <div className="section-tabs">{mealCategories.map(c=>(<button key={c.key} className={`section-tab ${activeTab===c.key?'active':''}`} onClick={()=>setActiveTab(c.key)}>{c.label}</button>))}</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
         <span style={{fontSize:13,color:"#9c9a90"}}>{currentList.length} {currentCategory?.label.toLowerCase()}</span>
         <button className="btn btn-primary" onClick={()=>openAdd(activeTab)} style={{fontSize:12,padding:"6px 14px"}}>+ Add {activeTab==='dessert'?'dessert':currentCategory?.label.replace(/s$/,'').toLowerCase()}</button>
@@ -603,8 +488,7 @@ function MealPlanner(){
       {showAddModal&&editItem&&<RecipeModal/>}
       {deleteConfirm&&<DeleteModal/>}
       {showDayList&&<ShoppingModal/>}
-    </div>
-  );
+    </div>);
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<MealPlanner/>);
